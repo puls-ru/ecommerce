@@ -1,0 +1,211 @@
+openapi: "3.0.0"
+info:
+  description: "Внешний API для взаимодействия с Ecommerce-площадками"
+  version: "1.0.1"
+  title: "PULS Ecommerce API"
+servers:
+  - url: "http://ecommerce.puls.ru/v1"
+security:
+  - api_key: []
+paths:
+  /order:
+    post:
+      summary: "Создание заказа"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Order"
+      responses:
+        201:
+          description: "Заказ создан"
+        400:
+          description: "Неправильные параметры заказа"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        401:
+          description: "Необходима авторизация"
+        403:
+          description: "В создании заказа отказано"
+  /orders:
+    get:
+      summary: "Просмотр статусов заказов"
+      parameters:
+      - name: "ids"
+        in: "query"
+        schema:
+          type: "string"
+        description: "Список идентификаторов заказов через запятую"
+      - name: "limit"
+        in: "query"
+        schema:
+          type: "integer"
+        description: ""
+      - name: "page"
+        in: "query"
+        schema:
+          type: "integer"
+      responses:
+        200:
+          description: "Список найденных заказов"
+          content:
+            "application/json":
+              schema:
+                type: "array"
+                items:
+                  $ref: '#/components/schemas/OrdersResponse'
+        401:
+          description: "Необходима авторизация"
+  /prices:
+    get:
+      summary: "Получение свежего прайс-листа"
+      parameters:
+      - name: "region"
+        in: "query"
+        schema:
+          type: "string"  
+        description: "Регион для отбора. Если не передан, отдаем полный прайс-лист"
+      responses:
+        200:
+          description: "Прайс-лист"
+          content:
+            "application/json":
+              schema:
+                $ref: '#/components/schemas/Price'
+components:
+  securitySchemes:
+    api_key:
+      in: header
+      name: Authorization
+      type: apiKey
+  schemas:
+    OrdersResponse:
+      type: "object"
+      properties:
+        totalCount: 
+          type: "integer"
+        orders:
+          type: "array"
+          items:
+            $ref: '#/components/schemas/Order'
+    Order:
+      type: "object"
+      properties:
+        id:
+          type: "string"
+        placeId:
+          type: "integer"
+          description: "ID пункта выдачи"
+        items:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/OrderItem"
+        priceTotal:
+          type: "number"
+          description: "Итоговая сумма заказа"
+        shipDate:
+          type: "string"
+          format: "date-time"
+          description: "Планируемая дата доставки"
+        status:
+          type: "string"
+          description: "Статус заказа"
+          enum:
+          - "placed"
+          - "partially"
+          - "approved"
+          - "delivered"
+          - "refused"
+        complete:
+          type: "boolean"
+          description: "Признак завершенности заказа"
+          default: false
+          readOnly: true
+    OrderItem:
+      type: "object"
+      description: "Элемент заказа"
+      properties:
+        itemId: 
+          $ref: '#/components/schemas/ItemId'
+        quantity:
+          type: "integer"
+          description: "Количество заказанных единиц товара"
+        price:
+          type: "number"
+          description: "Стоимость товара для аптеки"
+        clientPrice:
+          type: "number"
+          description: "Стоимость товара для клиента"
+    ItemId:
+      type: "string"
+    SKU:
+      type: "object"
+      description: "Товарная единица"
+      properties:
+        id:
+          $ref: '#/components/schemas/ItemId'
+        name:
+          type: "string"
+          example: "Марлевая повязка 50шт"
+        barcode:
+          type: "string"
+          description: "Штрихкод"
+        quantity:
+          type: "integer"
+        vendor:
+          type: "string"
+          description: "Производитель"
+    PriceItem:
+      type: "object"
+      properties:
+        SKU:
+          $ref: "#/components/schemas/SKU"
+        price:
+          type: "number"
+          description: "Цена в рублях"
+        quantity:
+          type: "integer"
+          description: "Остаток на складе"
+        region:
+          type: "string"
+          description: "Регион или город"
+    Price:
+      type: "object"
+      properties:
+        generationDate:
+          type: "string"
+          format: "date-time"
+          description: "Дата генерации прайс-листа"
+        items:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/PriceItem"
+    Organization:
+      type: "object"
+      properties:
+        id:
+          $ref: '#/components/schemas/OrganizationId'
+        name:
+          type: "string"
+        inn: 
+          type: "string"
+        kpp:
+          type: "string"
+    OrganizationId:
+      type: "integer"
+    Place:
+      type: "object"
+      properties:
+        id:
+          type: "integer"
+        address: 
+          type: "string"
+          description: "Адрес точки выдачи"
+        postIndex:
+          type: "integer"
+          description: "Почтовый индекс"
+        organizationId:
+          $ref: '#/components/schemas/OrganizationId'
+          description: "ID аптеки"
